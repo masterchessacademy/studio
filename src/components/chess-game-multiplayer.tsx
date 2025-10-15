@@ -7,54 +7,13 @@ import { Chessboard } from 'react-chessboard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-
-// Mock implementation for real-time functionality
-const games = new Map<string, any>();
-const listeners = new Map<string, ((data: any) => void)[]>();
-
-function getGameRef(gameId: string) {
-    if (!games.has(gameId)) {
-        games.set(gameId, {
-            fen: 'start',
-            players: [],
-            turn: 'w',
-        });
-    }
-    
-    return {
-        on: (event: 'value', callback: (snapshot: any) => void) => {
-            if (!listeners.has(gameId)) {
-                listeners.set(gameId, []);
-            }
-            listeners.get(gameId)!.push(callback);
-            
-            // Initial call
-            callback({ val: () => games.get(gameId) });
-        },
-        off: () => {
-             listeners.delete(gameId);
-        },
-        update: (data: any) => {
-            const currentGame = games.get(gameId);
-            const updatedGame = { ...currentGame, ...data };
-            games.set(gameId, updatedGame);
-
-            if (listeners.has(gameId)) {
-                listeners.get(gameId)!.forEach(cb => cb({ val: () => updatedGame }));
-            }
-        },
-        once: (event: 'value') => {
-            return Promise.resolve({
-                exists: () => games.has(gameId),
-                val: () => games.get(gameId),
-            });
-        }
-    };
-}
+import { ref, onValue, update, off } from "firebase/database";
+import { useFirebase } from '@/firebase';
 
 
 export function ChessGame({ gameId, playerId }: { gameId: string, playerId: string }) {
   const game = useMemo(() => new Chess(), []);
+  const { db } = useFirebase();
   
   const [fen, setFen] = useState('start');
   const [playerColor, setPlayerColor] = useState<'w' | 'b'>('w');
@@ -63,7 +22,7 @@ export function ChessGame({ gameId, playerId }: { gameId: string, playerId: stri
   const [isClient, setIsClient] = useState(false);
   const [gameData, setGameData] = useState<any>(null);
 
-  const gameRef = useMemo(() => getGameRef(gameId), [gameId]);
+  const gameRef = useMemo(() => db ? ref(db, `games/${gameId}`) : null, [db, gameId]);
 
   useEffect(() => {
     setIsClient(true);
@@ -111,9 +70,11 @@ export function ChessGame({ gameId, playerId }: { gameId: string, playerId: stri
         setIsPlayerTurn(game.turn() === color && data.players.length === 2);
     };
 
-    gameRef.on('value', callback);
+    onValue(gameRef, callback);
 
-    return () => gameRef.off();
+    return () => {
+        off(gameRef, 'value', callback);
+    };
   }, [gameId, playerId, game, gameRef]);
 
   useEffect(() => {
@@ -121,7 +82,7 @@ export function ChessGame({ gameId, playerId }: { gameId: string, playerId: stri
   }, [fen, gameData, updateStatus]);
 
   function onDrop(sourceSquare: Square, targetSquare: Square) {
-    if (!isPlayerTurn || game.turn() !== playerColor) {
+    if (!isPlayerTurn || game.turn() !== playerColor || !gameRef) {
       return false;
     }
 
@@ -139,17 +100,18 @@ export function ChessGame({ gameId, playerId }: { gameId: string, playerId: stri
     game.load(gameCopy.fen());
     setFen(game.fen());
     
-    gameRef.update({ fen: game.fen(), turn: game.turn() });
+    update(gameRef, { fen: game.fen(), turn: game.turn() });
     
     return true;
   }
   
   const handleReset = () => {
+    if (!gameRef) return;
     game.reset();
-    gameRef.update({ fen: 'start', turn: 'w' });
+    update(gameRef, { fen: 'start', turn: 'w' });
   };
   
-  if (!isClient) {
+  if (!isClient || !db) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>;
   }
   

@@ -6,28 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChessGame } from '@/components/chess-game-multiplayer';
+import { get, ref, set, child, onValue } from 'firebase/database';
+import { useFirebase } from '@/firebase';
 
-// Mock implementation for real-time functionality
-const games = new Map<string, any>();
-
-function createGame(gameId: string) {
-  if (!games.has(gameId)) {
-    games.set(gameId, {
-      fen: 'start',
-      players: [],
-      turn: 'w',
-    });
-  }
-}
-
-function joinGame(gameId: string, playerId: string) {
-    const game = games.get(gameId);
-    if (game && game.players.length < 2 && !game.players.includes(playerId)) {
-        game.players.push(playerId);
-        return true;
-    }
-    return false;
-}
 
 export default function MultiplayerPage() {
   const [gameId, setGameId] = useState('');
@@ -35,27 +16,62 @@ export default function MultiplayerPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [playerId] = useState(() => 'player-' + Math.random().toString(36).substr(2, 9));
+  const { db } = useFirebase();
 
+  const gamesRef = db ? ref(db, 'games') : null;
 
-  const handleCreateGame = () => {
+  async function createGame(newGameId: string) {
+    if (!gamesRef) return;
+    const gameRef = child(gamesRef, newGameId);
+    const snapshot = await get(gameRef);
+    if (!snapshot.exists()) {
+      await set(gameRef, {
+        fen: 'start',
+        players: [],
+        turn: 'w',
+      });
+    }
+  }
+
+  async function joinGame(id: string, pId: string) {
+    if (!gamesRef) return false;
+    const gameRef = child(gamesRef, id);
+    const snapshot = await get(gameRef);
+    const game = snapshot.val();
+    if (game && game.players.length < 2 && !game.players.includes(pId)) {
+      const updatedPlayers = [...game.players, pId];
+      await set(child(gameRef, 'players'), updatedPlayers);
+      return true;
+    }
+    return false;
+  }
+
+  const handleCreateGame = async () => {
+    if (!db) return;
     const newGameId = Math.random().toString(36).substr(2, 9);
-    createGame(newGameId);
+    await createGame(newGameId);
     setGameId(newGameId);
-    handleJoinGame(newGameId);
+    await handleJoinGame(newGameId);
   };
 
-  const handleJoinGame = (id: string) => {
+  const handleJoinGame = async (id: string) => {
+    if (!db) return;
     if(!id) {
         setError('Please enter a game ID.');
         return;
     }
-    if (joinGame(id, playerId)) {
+    const success = await joinGame(id, playerId);
+    if (success) {
       setJoinedGame(id);
       setError('');
     } else {
       setError('Game is full or does not exist.');
     }
   };
+
+  if (!db) {
+    return <div>Loading Firebase...</div>
+  }
 
   if (joinedGame) {
     return <ChessGame gameId={joinedGame} playerId={playerId} />;
