@@ -117,12 +117,8 @@ export function ChessGame() {
   }
 
   return (
-    <Card className="w-full max-w-5xl mx-auto shadow-2xl rounded-xl">
-      <CardHeader className="text-center">
-        <CardTitle className="text-4xl font-headline">ChessMate</CardTitle>
-        <CardDescription>Play a game of chess against a generative AI.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid grid-cols-1 lg:grid-cols-3 items-start justify-center gap-8 p-4 md:p-6">
+    <div className="w-full max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 items-start justify-center gap-8">
         <div className="w-full h-full flex items-center justify-center lg:col-span-2">
             <div className="w-full max-w-[400px] md:max-w-[560px] aspect-square">
                 <Chessboard
@@ -177,7 +173,7 @@ export function ChessGame() {
             </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
