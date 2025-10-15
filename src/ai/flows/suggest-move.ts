@@ -17,7 +17,7 @@ const SuggestMoveInputSchema = z.object({
 export type SuggestMoveInput = z.infer<typeof SuggestMoveInputSchema>;
 
 const SuggestMoveOutputSchema = z.object({
-  move: z.string().describe('The suggested move in UCI notation.'),
+  move: z.string().describe('The suggested move in UCI notation (e.g., "e2e4", "g1f3", "a7a8q").'),
   explanation: z.string().describe('Explanation of why the move is suggested.'),
 });
 export type SuggestMoveOutput = z.infer<typeof SuggestMoveOutputSchema>;
@@ -30,11 +30,14 @@ const prompt = ai.definePrompt({
   name: 'suggestMovePrompt',
   input: {schema: SuggestMoveInputSchema},
   output: {schema: SuggestMoveOutputSchema},
-  prompt: `You are a helpful chess tutor. Given the current board state in FEN notation, suggest a single best move for white and explain your reasoning in simple terms.
+  prompt: `You are a helpful chess tutor. Given the current board state in FEN notation, suggest a single best move for the current player.
 
 Current board state (FEN): {{{fen}}}
 
-Output the move in UCI notation and provide a brief explanation.
+Based on the FEN string, determine whose turn it is.
+Suggest the best possible legal move for that player.
+Output the move strictly in UCI notation (e.g., e2e4, g1f3, a7a8q for promotion).
+Provide a brief explanation for your move suggestion.
 `,
 });
 
