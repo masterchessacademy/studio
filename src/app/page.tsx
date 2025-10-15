@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 md:p-12 bg-background">
-      <div className="flex flex-col items-center gap-8 w-full max-w-5xl">
+      <div className="flex flex-col items-center justify-center gap-8 w-full max-w-5xl">
         <div className="text-center">
             <h1 className="text-5xl font-bold font-headline mb-2">ChessMate</h1>
             <p className="text-xl text-muted-foreground">Play chess against AI or a friend.</p>
