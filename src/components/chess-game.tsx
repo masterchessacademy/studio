@@ -111,12 +111,20 @@ export function ChessGame() {
     }
 
     const gameCopy = new Chess(game.fen());
-    const move = gameCopy.move({
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: 'q',
-    });
+    let move = null;
+    
+    try {
+        move = gameCopy.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: 'q', // always promote to a queen for simplicity
+        });
+    } catch(e) {
+        // illegal move
+        return false;
+    }
 
+    // illegal move
     if (move === null) {
       return false;
     }
