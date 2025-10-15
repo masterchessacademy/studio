@@ -16,16 +16,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+let firebaseApp: FirebaseApp;
+let auth: Auth;
+let db: Database | null = null;
+let googleProvider: GoogleAuthProvider;
+
 function initializeFirebase() {
-  if (getApps().length) {
-    return getApp();
+  if (typeof window !== 'undefined') {
+    if (!firebaseApp) {
+      if (getApps().length > 0) {
+        firebaseApp = getApp();
+      } else {
+        const configForInit = { ...firebaseConfig };
+        if (!configForInit.databaseURL || !configForInit.databaseURL.startsWith('https://')) {
+          delete (configForInit as Partial<typeof configForInit>).databaseURL;
+        }
+        firebaseApp = initializeApp(configForInit);
+      }
+      auth = getAuth(firebaseApp);
+      if (firebaseConfig.databaseURL && firebaseConfig.databaseURL.startsWith('https://')) {
+        db = getDatabase(firebaseApp);
+      }
+      googleProvider = new GoogleAuthProvider();
+    }
   }
-  const configForInit = { ...firebaseConfig };
-  if (!configForInit.databaseURL || !configForInit.databaseURL.startsWith('https://')) {
-    delete (configForInit as Partial<typeof configForInit>).databaseURL;
-  }
-  return initializeApp(configForInit);
 }
+
+initializeFirebase();
+
 
 interface FirebaseContextType {
     app: FirebaseApp | null;
@@ -37,23 +55,16 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType>({ app: null, db: null, auth: null, googleProvider: null });
 
 export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
-    const app = useMemo(() => initializeFirebase(), []);
-    const db = useMemo(() => {
-        if (app && firebaseConfig.databaseURL && firebaseConfig.databaseURL.startsWith('https://')) {
-            try {
-                return getDatabase(app);
-            } catch (error) {
-                console.error("Firebase Database initialization failed:", error);
-                return null;
-            }
-        }
-        return null;
-    }, [app]);
-    const auth = useMemo(() => getAuth(app), [app]);
-    const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
+    
+    const contextValue = {
+        app: firebaseApp || null,
+        db: db || null,
+        auth: auth || null,
+        googleProvider: googleProvider || null,
+    };
 
     return (
-        <FirebaseContext.Provider value={{ app, db, auth, googleProvider }}>
+        <FirebaseContext.Provider value={contextValue}>
             {children}
         </FirebaseContext.Provider>
     )
