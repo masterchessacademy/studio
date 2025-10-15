@@ -2,6 +2,7 @@
 
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
+import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
 import { createContext, useContext, ReactNode, useMemo } from 'react';
 import { FirebaseClientProvider } from './client-provider';
 
@@ -19,7 +20,6 @@ function initializeFirebase() {
   if (getApps().length) {
     return getApp();
   }
-  // Remove databaseURL from config if it's not a valid URL
   const configForInit = { ...firebaseConfig };
   if (!configForInit.databaseURL || !configForInit.databaseURL.startsWith('https://')) {
     delete (configForInit as Partial<typeof configForInit>).databaseURL;
@@ -30,14 +30,15 @@ function initializeFirebase() {
 interface FirebaseContextType {
     app: FirebaseApp | null;
     db: Database | null;
+    auth: Auth | null;
+    googleProvider: GoogleAuthProvider | null;
 }
 
-const FirebaseContext = createContext<FirebaseContextType>({ app: null, db: null });
+const FirebaseContext = createContext<FirebaseContextType>({ app: null, db: null, auth: null, googleProvider: null });
 
 export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
     const app = useMemo(() => initializeFirebase(), []);
     const db = useMemo(() => {
-        // Only try to get the database if the URL is valid
         if (app && firebaseConfig.databaseURL && firebaseConfig.databaseURL.startsWith('https://')) {
             try {
                 return getDatabase(app);
@@ -48,9 +49,11 @@ export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
         }
         return null;
     }, [app]);
+    const auth = useMemo(() => getAuth(app), [app]);
+    const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
 
     return (
-        <FirebaseContext.Provider value={{ app, db }}>
+        <FirebaseContext.Provider value={{ app, db, auth, googleProvider }}>
             {children}
         </FirebaseContext.Provider>
     )
