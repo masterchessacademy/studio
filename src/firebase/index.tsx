@@ -3,6 +3,7 @@
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
 import { createContext, useContext, ReactNode, useMemo } from 'react';
+import { FirebaseClientProvider } from './client-provider';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -58,3 +59,5 @@ export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
 export const useFirebase = () => {
     return useContext(FirebaseContext);
 }
+
+export { FirebaseClientProvider };
