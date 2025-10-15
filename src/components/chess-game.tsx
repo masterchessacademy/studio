@@ -42,16 +42,35 @@ export function ChessGame() {
     setStatus(currentStatus);
   }, [game]);
 
-  const makeAiMove = useCallback(async () => {
-    if (game.isGameOver() || aiThinking) return;
+  const makeAiMove = useCallback(async (retryCount = 0) => {
+    if (game.isGameOver() || aiThinking || retryCount > 2) {
+      if (retryCount > 2) {
+        setAiExplanation("AI is unable to find a valid move. Please try again.");
+        setAiThinking(false);
+      }
+      return;
+    }
     setAiThinking(true);
     setAiExplanation('AI is thinking...');
     try {
       const result = await getAiMove(game.fen());
       if (result && result.move) {
-        game.move(result.move);
-        setFen(game.fen());
-        setAiExplanation(`AI played ${result.move}. ${result.explanation}`);
+        try {
+          const moveResult = game.move(result.move);
+          if (moveResult === null) {
+            console.error('AI suggested an illegal move:', result.move);
+            // Retry if the move was illegal
+            makeAiMove(retryCount + 1);
+            return;
+          }
+          setFen(game.fen());
+          setAiExplanation(`AI played ${result.move}. ${result.explanation}`);
+        } catch (e) {
+          console.error(`Invalid move from AI: ${result.move}`, e);
+          // Retry if the move was invalid
+          makeAiMove(retryCount + 1);
+          return;
+        }
       } else {
         setAiExplanation('AI failed to find a move.');
       }
@@ -75,7 +94,7 @@ export function ChessGame() {
     setAiExplanation('');
     updateStatus();
     if (game.turn() !== playerColor) {
-      setTimeout(makeAiMove, 500);
+      setTimeout(() => makeAiMove(), 500);
     }
   }, [game, playerColor, makeAiMove, updateStatus]);
 
@@ -106,7 +125,7 @@ export function ChessGame() {
     setFen(game.fen());
 
     if (!game.isGameOver()) {
-      setTimeout(makeAiMove, 250);
+      setTimeout(() => makeAiMove(), 250);
     }
     
     return true;
