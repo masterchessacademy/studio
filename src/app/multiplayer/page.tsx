@@ -1,20 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChessGame } from '@/components/chess-game-multiplayer';
 import { get, ref, set, child } from 'firebase/database';
 import { useFirebase } from '@/firebase';
+import { Loader2 } from 'lucide-react';
 
 
 export default function MultiplayerPage() {
   const [gameId, setGameId] = useState('');
   const [joinedGame, setJoinedGame] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const [playerId] = useState(() => 'player-' + Math.random().toString(36).substr(2, 9));
+  const [playerId, setPlayerId] = useState('');
   const { db } = useFirebase();
+
+  useEffect(() => {
+    // Generate playerId only on the client-side to avoid hydration errors
+    setPlayerId('player-' + Math.random().toString(36).substr(2, 9));
+  }, []);
 
   const gamesRef = db ? ref(db, 'games') : null;
 
@@ -32,15 +38,22 @@ export default function MultiplayerPage() {
   }
 
   async function joinGame(id: string, pId: string) {
-    if (!gamesRef) return false;
+    if (!gamesRef || !pId) return false;
     const gameRef = child(gamesRef, id);
     const snapshot = await get(gameRef);
     const game = snapshot.val();
+    
+    // Allow rejoining if already in the game
+    if (game && game.players.includes(pId)) {
+        return true;
+    }
+
     if (game && game.players.length < 2 && !game.players.includes(pId)) {
       const updatedPlayers = [...game.players, pId];
       await set(child(gameRef, 'players'), updatedPlayers);
       return true;
     }
+    
     return false;
   }
 
@@ -67,8 +80,8 @@ export default function MultiplayerPage() {
     }
   };
 
-  if (!db) {
-    return <div>Loading Firebase...</div>
+  if (!db || !playerId) {
+    return <div className="flex items-center justify-center min-h-screen"><Loader2 className="h-16 w-16 animate-spin" /></div>
   }
 
   if (joinedGame) {
@@ -90,10 +103,20 @@ export default function MultiplayerPage() {
               placeholder="Enter Game ID"
               value={gameId}
               onChange={(e) => setGameId(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleJoinGame(gameId);
+                }
+              }}
             />
             <Button onClick={() => handleJoinGame(gameId)}>Join Game</Button>
           </div>
           {error && <p className="text-destructive">{error}</p>}
+          {gameId && !joinedGame && (
+            <p className="text-sm text-muted-foreground">
+              Share this game ID with a friend: <span className="font-bold">{gameId}</span>
+            </p>
+          )}
         </CardContent>
       </Card>
     </main>

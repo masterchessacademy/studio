@@ -2,7 +2,7 @@
 
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, ReactNode, useMemo } from 'react';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -17,19 +17,11 @@ const firebaseConfig = {
 function initializeFirebase() {
   if (getApps().length) {
     const app = getApp();
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Firebase app already initialized:', app.name);
-    }
     return app;
   }
   const app = initializeApp(firebaseConfig);
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Firebase app initialized:', app.name);
-  }
   return app;
 }
-
-export const app = initializeFirebase();
 
 interface FirebaseContextType {
     app: FirebaseApp | null;
@@ -39,8 +31,18 @@ interface FirebaseContextType {
 const FirebaseContext = createContext<FirebaseContextType>({ app: null, db: null });
 
 export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
-    const app = initializeFirebase();
-    const db = getDatabase(app);
+    const app = useMemo(() => initializeFirebase(), []);
+    const db = useMemo(() => {
+        if (app && firebaseConfig.databaseURL) {
+            try {
+                return getDatabase(app);
+            } catch (error) {
+                console.error("Firebase Database initialization failed:", error);
+                return null;
+            }
+        }
+        return null;
+    }, [app]);
 
     return (
         <FirebaseContext.Provider value={{ app, db }}>
