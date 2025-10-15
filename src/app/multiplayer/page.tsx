@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter }from 'next/navigation';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ChessGame } from '@/components/chess-game-multiplayer';
-import { get, ref, set, child, onValue } from 'firebase/database';
+import { get, ref, set, child } from 'firebase/database';
 import { useFirebase } from '@/firebase';
 
 
@@ -14,7 +13,6 @@ export default function MultiplayerPage() {
   const [gameId, setGameId] = useState('');
   const [joinedGame, setJoinedGame] = useState<string | null>(null);
   const [error, setError] = useState('');
-  const router = useRouter();
   const [playerId] = useState(() => 'player-' + Math.random().toString(36).substr(2, 9));
   const { db } = useFirebase();
 

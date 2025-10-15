@@ -2,7 +2,7 @@
 
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getDatabase, Database } from 'firebase/database';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,9 +16,17 @@ const firebaseConfig = {
 
 function initializeFirebase() {
   if (getApps().length) {
-    return getApp();
+    const app = getApp();
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Firebase app already initialized:', app.name);
+    }
+    return app;
   }
-  return initializeApp(firebaseConfig);
+  const app = initializeApp(firebaseConfig);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Firebase app initialized:', app.name);
+  }
+  return app;
 }
 
 export const app = initializeFirebase();
@@ -30,7 +38,7 @@ interface FirebaseContextType {
 
 const FirebaseContext = createContext<FirebaseContextType>({ app: null, db: null });
 
-export const FirebaseProvider = ({ children }: { children: React.ReactNode}) => {
+export const FirebaseProvider = ({ children }: { children: ReactNode}) => {
     const app = initializeFirebase();
     const db = getDatabase(app);
 
